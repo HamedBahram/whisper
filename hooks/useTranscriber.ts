@@ -1,106 +1,53 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useWorker } from '@/hooks/useWorker'
-import constants from '@/lib/constants'
-import {
-  ProgressItem,
-  Transcriber,
-  TranscriberCompleteData,
-  TranscriberData,
-  TranscriberUpdateData
-} from '@/lib/types'
+
+import { Transcriber, TranscriberData } from '@/lib/types'
 
 export function useTranscriber(): Transcriber {
-  const [transcript, setTranscript] = useState<TranscriberData | undefined>(
-    undefined
-  )
-  const [isBusy, setIsBusy] = useState(false)
+  const [output, setOutput] = useState<TranscriberData | undefined>()
+  const [isProcessing, setIsProcessing] = useState(false)
   const [isModelLoading, setIsModelLoading] = useState(false)
-
-  const [progressItems, setProgressItems] = useState<ProgressItem[]>([])
+  const [modelLoadingProgress, setModelLoadingProgress] = useState(0)
 
   const webWorker = useWorker(event => {
     const message = event.data
-    // Update the state with the result
     switch (message.status) {
       case 'progress':
-        // Model file progress: update one of the progress items.
-        setProgressItems(prev =>
-          prev.map(item => {
-            if (item.file === message.file) {
-              return { ...item, progress: message.progress }
-            }
-            return item
-          })
-        )
+        setModelLoadingProgress(message.progress)
         break
       case 'update':
-        // Received partial update
-        // console.log("update", message);
-        const updateMessage = message as TranscriberUpdateData
-        setTranscript({
-          isBusy: true,
-          text: updateMessage.data[0],
-          chunks: updateMessage.data[1].chunks
-        })
         break
       case 'complete':
-        // Received complete transcript
-        // console.log("complete", message);
-        const completeMessage = message as TranscriberCompleteData
-        setTranscript({
-          isBusy: false,
-          text: completeMessage.data.text,
-          chunks: completeMessage.data.chunks
+        setOutput({
+          text: message.text
         })
-        setIsBusy(false)
+        setIsProcessing(false)
         break
-
       case 'initiate':
-        // Model file start load: add a new progress item to the list.
         setIsModelLoading(true)
-        setProgressItems(prev => [...prev, message])
         break
       case 'ready':
         setIsModelLoading(false)
         break
       case 'error':
-        setIsBusy(false)
-        alert(
-          `${message.data.message} This is most likely because you are using Safari on an M1/M2 Mac. Please try again from Chrome, Firefox, or Edge.\n\nIf this is not the case, please file a bug report.`
-        )
+        setIsProcessing(false)
         break
       case 'done':
-        // Model file loaded: remove the progress item from the list.
-        setProgressItems(prev =>
-          prev.filter(item => item.file !== message.file)
-        )
         break
-
       default:
-        // initiate/download/done
         break
     }
   })
 
-  const [model, setModel] = useState<string>(constants.DEFAULT_MODEL)
-  const [subtask, setSubtask] = useState<string>(constants.DEFAULT_SUBTASK)
-  const [quantized, setQuantized] = useState<boolean>(
-    constants.DEFAULT_QUANTIZED
-  )
-  const [multilingual, setMultilingual] = useState<boolean>(
-    constants.DEFAULT_MULTILINGUAL
-  )
-  const [language, setLanguage] = useState<string>(constants.DEFAULT_LANGUAGE)
-
   const onInputChange = useCallback(() => {
-    setTranscript(undefined)
+    setOutput(undefined)
   }, [])
 
-  const postRequest = useCallback(
+  const start = useCallback(
     async (audioData: AudioBuffer | undefined) => {
       if (audioData) {
-        setTranscript(undefined)
-        setIsBusy(true)
+        setOutput(undefined)
+        setIsProcessing(true)
 
         let audio
         if (audioData.numberOfChannels === 2) {
@@ -118,50 +65,28 @@ export function useTranscriber(): Transcriber {
           audio = audioData.getChannelData(0)
         }
 
-        webWorker?.postMessage({
-          audio,
-          model,
-          multilingual,
-          quantized,
-          subtask: multilingual ? subtask : null,
-          language: multilingual && language !== 'auto' ? language : null
-        })
+        webWorker?.postMessage({ audio })
       }
     },
-    [webWorker, model, multilingual, quantized, subtask, language]
+    [webWorker]
   )
 
   const transcriber = useMemo(() => {
     return {
       onInputChange,
-      isBusy,
+      isProcessing,
       isModelLoading,
-      progressItems,
-      start: postRequest,
-      output: transcript,
-      model,
-      setModel,
-      multilingual,
-      setMultilingual,
-      quantized,
-      setQuantized,
-      subtask,
-      setSubtask,
-      language,
-      setLanguage
+      modelLoadingProgress,
+      start,
+      output
     }
   }, [
     onInputChange,
-    isBusy,
+    isProcessing,
     isModelLoading,
-    progressItems,
-    postRequest,
-    transcript,
-    model,
-    multilingual,
-    quantized,
-    subtask,
-    language
+    modelLoadingProgress,
+    start,
+    output
   ])
 
   return transcriber
