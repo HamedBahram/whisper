@@ -6,6 +6,5 @@ interface Props {
 }
 
 export default function Transcript({ transcribedData }: Props) {
-  console.log(transcribedData)
-  return <div>Transcript</div>
+  return <div>{transcribedData?.text}</div>
 }
