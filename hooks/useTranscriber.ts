@@ -11,6 +11,9 @@ export function useTranscriber(): Transcriber {
 
   const webWorker = useWorker(event => {
     const message = event.data
+
+    console.log('Message from worker:', message)
+
     switch (message.status) {
       case 'progress':
         setModelLoadingProgress(message.progress)
@@ -18,9 +21,7 @@ export function useTranscriber(): Transcriber {
       case 'update':
         break
       case 'complete':
-        setOutput({
-          text: message.text
-        })
+        setOutput(message.data)
         setIsProcessing(false)
         break
       case 'initiate':
@@ -31,6 +32,7 @@ export function useTranscriber(): Transcriber {
         break
       case 'error':
         setIsProcessing(false)
+        console.log('Error:', message)
         break
       case 'done':
         break

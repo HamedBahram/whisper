@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import AudioPlayer from '@/components/audio-player'
-import { Progress } from '@/components/ui/progress'
 import { UrlDialog } from '@/components/url-dialog'
 
 import { Loader } from 'lucide-react'
@@ -27,7 +26,6 @@ export default function AudioManager({
 }: {
   transcriber: Transcriber
 }) {
-  const [progress, setProgress] = useState<number | undefined>(undefined)
   const [audioData, setAudioData] = useState<AudioData | undefined>(undefined)
   const [url, setUrl] = useState<string | undefined>(undefined)
 
@@ -39,10 +37,10 @@ export default function AudioManager({
     setUrl(url)
   }
 
-  // const resetAudio = () => {
-  //   setAudioData(undefined)
-  //   setUrl(undefined)
-  // }
+  const resetAudio = () => {
+    setAudioData(undefined)
+    setUrl(undefined)
+  }
 
   // const setAudioFromRecording = async (data: Blob) => {
   //   resetAudio()
@@ -75,13 +73,10 @@ export default function AudioManager({
       if (url) {
         try {
           setAudioData(undefined)
-          setProgress(0)
+
           const { data, headers } = (await axios.get(url, {
             signal: requestAbortController.signal,
-            responseType: 'arraybuffer',
-            onDownloadProgress(progressEvent) {
-              setProgress(progressEvent.progress || 0)
-            }
+            responseType: 'arraybuffer'
           })) as {
             data: ArrayBuffer
             headers: { 'content-type': string }
@@ -107,8 +102,6 @@ export default function AudioManager({
           })
         } catch (error) {
           console.log('Request failed or aborted', error)
-        } finally {
-          setProgress(undefined)
         }
       }
     },
@@ -126,8 +119,8 @@ export default function AudioManager({
   }, [downloadAudioFromUrl, url])
 
   return (
-    <section className='py-12'>
-      <div className='flex flex-col items-center gap-4'>
+    <section className='w-full max-w-2xl rounded-lg border p-6 shadow-md'>
+      <div className='flex h-full flex-col items-start gap-6'>
         <UrlDialog onUrlChange={onUrlChange} />
 
         {audioData && (
@@ -137,28 +130,27 @@ export default function AudioManager({
               mimeType={audioData.mimeType}
             />
 
-            <Button onClick={() => transcriber.start(audioData.buffer)}>
-              {transcriber.isModelLoading ? (
-                <>
-                  <Loader className='animate-spin' />
-                  <span>Loading model</span>
-                </>
-              ) : transcriber.isProcessing ? (
-                <>
-                  <Loader className='animate-spin' />
-                  <span>Transcribing</span>
-                </>
-              ) : (
-                <span>Transcribe</span>
-              )}
-            </Button>
+            <div className='mt-auto flex w-full items-center justify-between'>
+              <Button onClick={() => transcriber.start(audioData.buffer)}>
+                {transcriber.isModelLoading ? (
+                  <>
+                    <Loader className='animate-spin' />
+                    <span>Loading model</span>
+                  </>
+                ) : transcriber.isProcessing ? (
+                  <>
+                    <Loader className='animate-spin' />
+                    <span>Transcribing</span>
+                  </>
+                ) : (
+                  <span>Transcribe</span>
+                )}
+              </Button>
 
-            {transcriber.modelLoadingProgress > 0 && (
-              <div className='relative z-10 w-full p-4'>
-                <label>Loading model files... (only run once)</label>
-                <Progress value={progress} className='w-[60%]' />
-              </div>
-            )}
+              <Button variant='outline' onClick={resetAudio}>
+                Reset
+              </Button>
+            </div>
           </>
         )}
       </div>

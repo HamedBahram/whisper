@@ -15,7 +15,7 @@ export default function AudioPlayer(props: {
   }, [props.audioUrl])
 
   return (
-    <div className='relative z-10 flex w-96 p-4'>
+    <div className='w-full'>
       <audio ref={audioPlayer} controls className='h-14 w-full rounded-lg'>
         <source ref={audioSource} type={props.mimeType}></source>
       </audio>
