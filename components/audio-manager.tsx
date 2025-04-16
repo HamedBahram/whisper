@@ -1,3 +1,5 @@
+'use client'
+
 import axios from 'axios'
 import { Transcriber } from '@/lib/types'
 import { useCallback, useEffect, useState } from 'react'
@@ -5,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import AudioPlayer from '@/components/audio-player'
 import { UrlDialog } from '@/components/url-dialog'
+import { AudioRecorderDialog } from '@/components/audio-recorder-dialog'
 
 import { Loader } from 'lucide-react'
 
@@ -29,8 +32,6 @@ export default function AudioManager({
   const [audioData, setAudioData] = useState<AudioData | undefined>(undefined)
   const [url, setUrl] = useState<string | undefined>(undefined)
 
-  // const isAudioLoading = progress !== undefined
-
   const onUrlChange = (url: string) => {
     transcriber.onInputChange()
     setAudioData(undefined)
@@ -38,32 +39,32 @@ export default function AudioManager({
   }
 
   const resetAudio = () => {
+    transcriber.onInputChange()
     setAudioData(undefined)
     setUrl(undefined)
   }
 
-  // const setAudioFromRecording = async (data: Blob) => {
-  //   resetAudio()
-  //   setProgress(0)
-  //   const blobUrl = URL.createObjectURL(data)
-  //   const fileReader = new FileReader()
-  //   fileReader.onprogress = event => {
-  //     setProgress(event.loaded / event.total || 0)
-  //   }
-  //   fileReader.onloadend = async () => {
-  //     const audioCTX = new AudioContext({ sampleRate: 16000 })
-  //     const arrayBuffer = fileReader.result as ArrayBuffer
-  //     const decoded = await audioCTX.decodeAudioData(arrayBuffer)
-  //     setProgress(undefined)
-  //     setAudioData({
-  //       buffer: decoded,
-  //       url: blobUrl,
-  //       source: AudioSource.RECORDING,
-  //       mimeType: data.type
-  //     })
-  //   }
-  //   fileReader.readAsArrayBuffer(data)
-  // }
+  const setAudioFromRecording = async (data: Blob) => {
+    resetAudio()
+
+    const blobUrl = URL.createObjectURL(data)
+    const fileReader = new FileReader()
+
+    fileReader.onloadend = async () => {
+      const audioCTX = new AudioContext({ sampleRate: 16000 })
+      const arrayBuffer = fileReader.result as ArrayBuffer
+      const decoded = await audioCTX.decodeAudioData(arrayBuffer)
+
+      setAudioData({
+        buffer: decoded,
+        url: blobUrl,
+        source: AudioSource.RECORDING,
+        mimeType: data.type
+      })
+    }
+
+    fileReader.readAsArrayBuffer(data)
+  }
 
   const downloadAudioFromUrl = useCallback(
     async (
@@ -121,7 +122,16 @@ export default function AudioManager({
   return (
     <section className='w-full max-w-2xl rounded-lg border p-6 shadow-md'>
       <div className='flex h-full flex-col items-start gap-6'>
-        <UrlDialog onUrlChange={onUrlChange} />
+        <div className='flex w-full items-center justify-between'>
+          <UrlDialog onUrlChange={onUrlChange} />
+
+          <AudioRecorderDialog
+            onLoad={data => {
+              transcriber.onInputChange()
+              setAudioFromRecording(data)
+            }}
+          />
+        </div>
 
         {audioData && (
           <>

@@ -16,7 +16,7 @@ export default function Home() {
             <h1 className='text-5xl font-extrabold tracking-tight sm:text-7xl'>
               Whisper
             </h1>
-            <p className='mt-1'>Audio to text transcription</p>
+            <p className='mt-1 ml-3'>Audio to text transcription</p>
           </div>
           <div className='flex-1'>
             <div className='flex items-center justify-between text-sm font-medium'>
